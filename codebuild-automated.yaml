@@ -1,0 +1,92 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Parameters:
+  GitHubOwner:
+    Type: String
+    Description: "GitHub username or organization owning the repository"
+  GitHubRepo:
+    Type: String
+    Description: "Name of the GitHub repository"
+  GitHubBranch:
+    Type: String
+    Default: "master"
+    Description: "Branch of the GitHub repository"
+  GitHubOAuthToken:
+    Type: String
+    Description: "GitHub OAuth token for accessing the repository"
+    NoEcho: true
+
+Resources:
+  CodeBuildServiceRole:
+    Type: 'AWS::IAM::Role'
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: 'Allow'
+            Principal:
+              Service: 'codebuild.amazonaws.com'
+            Action: 'sts:AssumeRole'
+      Policies:
+        - PolicyName: 'CodeBuildPolicy'
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Effect: 'Allow'
+                Action:
+                  - 'logs:CreateLogGroup'
+                  - 'logs:CreateLogStream'
+                  - 'logs:PutLogEvents'
+                  - 's3:GetObject'
+                  - 's3:PutObject'
+                  - 'ec2:Describe*'
+                  - 'ssm:GetParameters'
+                  - 'codebuild:BatchGetBuilds'
+                  - 'codebuild:StartBuild'
+                  - 'codebuild:BatchGetBuildBatches'
+                  - 'codebuild:BatchGetProjects'
+                Resource: '*'
+
+  CodeBuildProject:
+    Type: 'AWS::CodeBuild::Project'
+    Properties:
+      Name: MyProject
+      ServiceRole: !GetAtt CodeBuildServiceRole.Arn
+      Artifacts:
+        Type: NO_ARTIFACTS
+      Environment:
+        Type: LINUX_CONTAINER
+        ComputeType: BUILD_GENERAL1_SMALL
+        Image: aws/codebuild/standard:1.0
+      Source:
+        Type: GITHUB
+        Location: !Sub "https://github.com/${GitHubOwner}/${GitHubRepo}.git"
+      Triggers:
+        Webhook: true
+        FilterGroups:
+          - - Type: EVENT
+              Pattern: PULL_REQUEST_CREATED,PULL_REQUEST_UPDATED
+            - Type: BASE_REF
+              Pattern: ^refs/heads/master$
+              ExcludeMatchedPattern: false
+            - Type: ACTOR_ACCOUNT_ID
+              Pattern: 12345
+              ExcludeMatchedPattern: true
+          - - Type: EVENT
+              Pattern: PUSH
+            - Type: HEAD_REF
+              Pattern: ^refs/heads/.*
+            - Type: FILE_PATH
+              Pattern: READ_ME
+              ExcludeMatchedPattern: true
+Resources:
+  MyBucket:
+   Type: AWS::S3::Bucket
+   Properties: {}              
+
+Outputs:
+  CodeBuildProjectName:
+    Description: 'Name of the CodeBuild project'
+    Value: !Ref CodeBuildProject
+  CodeBuildProjectArn:
+    Description: 'ARN of the CodeBuild project'
+    Value: !GetAtt CodeBuildProject.Arn
