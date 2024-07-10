@@ -16,6 +16,9 @@ Parameters:
     NoEcho: true
 
 Resources:
+  MyBucket:
+   Type: AWS:S3::BUCKET
+   Properties: {}
   CodeBuildServiceRole:
     Type: 'AWS::IAM::Role'
     Properties:
@@ -59,7 +62,7 @@ Resources:
         Image: aws/codebuild/standard:1.0
       Source:
         Type: GITHUB
-        Location: !Sub "https://github.com/${GitHubOwner}/${GitHubRepo}.git"
+        Location: !Sub "https://github.com/Nasir5544/codetest.git"
       Triggers:
         Webhook: true
         FilterGroups:
@@ -78,10 +81,7 @@ Resources:
             - Type: FILE_PATH
               Pattern: READ_ME
               ExcludeMatchedPattern: true
-Resources:
-  MyBucket:
-   Type: AWS::S3::Bucket
-   Properties: {}              
+             
 
 Outputs:
   CodeBuildProjectName:
